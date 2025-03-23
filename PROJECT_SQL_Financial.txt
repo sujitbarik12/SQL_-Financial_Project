@@ -1,0 +1,127 @@
+-- Create Employees Table
+CREATE TABLE Employees (
+    emp_id INT PRIMARY KEY,
+    emp_name VARCHAR(100),
+    designation VARCHAR(100),
+    department VARCHAR(100),
+    salary DECIMAL(10,2),
+    joining_date DATE
+);
+
+-- Create Projects Table
+CREATE TABLE Projects (
+    project_id INT PRIMARY KEY,
+    project_name VARCHAR(200),
+    client VARCHAR(200),
+    budget DECIMAL(15,2),
+    start_date DATE,
+    end_date DATE,
+    status VARCHAR(50)
+);
+
+-- Create Employee_Project Table (Many-to-Many Relationship)
+CREATE TABLE Employee_Project (
+    emp_id INT,
+    project_id INT,
+    role VARCHAR(100),
+    assigned_date DATE,
+    PRIMARY KEY (emp_id, project_id),
+    FOREIGN KEY (emp_id) REFERENCES Employees(emp_id),
+    FOREIGN KEY (project_id) REFERENCES Projects(project_id)
+);
+
+-- Create Financial Transactions Table
+CREATE TABLE Transactions (
+    transaction_id INT PRIMARY KEY,
+    project_id INT,
+    transaction_date DATE,
+    amount DECIMAL(15,2),
+    transaction_type VARCHAR(50), -- Credit/Debit
+    description TEXT,
+    FOREIGN KEY (project_id) REFERENCES Projects(project_id)
+);
+
+-- Create Payments Table
+CREATE TABLE Payments (
+    payment_id INT PRIMARY KEY,
+    project_id INT,
+    payment_date DATE,
+    amount DECIMAL(15,2),
+    payment_mode VARCHAR(50),
+    recipient VARCHAR(200),
+    FOREIGN KEY (project_id) REFERENCES Projects(project_id)
+);
+
+-- Insert Sample Employees
+INSERT INTO Employees VALUES
+(1, 'John Doe', 'Project Manager', 'Finance', 85000, '2020-01-15'),
+(2, 'Jane Smith', 'Financial Analyst', 'Finance', 75000, '2019-05-10'),
+(3, 'Robert Brown', 'Accountant', 'Finance', 65000, '2018-07-20');
+
+-- Insert Sample Projects
+INSERT INTO Projects VALUES
+(101, 'Financial Audit 2025', 'ABC Corp', 500000, '2025-01-01', '2025-12-31', 'Ongoing'),
+(102, 'Investment Strategy', 'XYZ Ltd', 300000, '2025-03-01', '2025-09-30', 'Pending');
+
+-- Insert Employee Assignments
+INSERT INTO Employee_Project VALUES
+(1, 101, 'Lead Auditor', '2025-01-10'),
+(2, 101, 'Analyst', '2025-02-01'),
+(3, 102, 'Consultant', '2025-03-10');
+
+-- Insert Sample Transactions
+INSERT INTO Transactions VALUES
+(1001, 101, '2025-02-10', 5000, 'Debit', 'Office Supplies'),
+(1002, 101, '2025-03-15', 20000, 'Credit', 'Client Payment'),
+(1003, 102, '2025-04-05', 15000, 'Debit', 'Market Research');
+
+-- Insert Sample Payments
+INSERT INTO Payments VALUES
+(2001, 101, '2025-02-28', 10000, 'Bank Transfer', 'Supplier A'),
+(2002, 102, '2025-03-25', 5000, 'Credit Card', 'Consultant Fees');
+
+-- Query to Get Project Financial Summary
+SELECT p.project_id, p.project_name, p.client, p.budget,
+       COALESCE(SUM(t.amount), 0) AS total_transactions,
+       COALESCE(SUM(CASE WHEN t.transaction_type = 'Credit' THEN t.amount ELSE 0 END), 0) AS total_credit,
+       COALESCE(SUM(CASE WHEN t.transaction_type = 'Debit' THEN t.amount ELSE 0 END), 0) AS total_debit,
+       (p.budget - COALESCE(SUM(CASE WHEN t.transaction_type = 'Debit' THEN t.amount ELSE 0 END), 0)) AS remaining_budget
+FROM Projects p
+LEFT JOIN Transactions t ON p.project_id = t.project_id
+GROUP BY p.project_id, p.project_name, p.client, p.budget;
+
+-- Query to Get Employee Workload by Project
+SELECT e.emp_id, e.emp_name, e.designation, p.project_name, ep.role, ep.assigned_date
+FROM Employees e
+JOIN Employee_Project ep ON e.emp_id = ep.emp_id
+JOIN Projects p ON ep.project_id = p.project_id;
+
+-- Query to List All Transactions by Project
+SELECT p.project_name, t.transaction_date, t.amount, t.transaction_type, t.description
+FROM Transactions t
+JOIN Projects p ON t.project_id = p.project_id
+ORDER BY t.transaction_date DESC;
+
+-- Query to Calculate Total Payments per Project
+SELECT p.project_name, SUM(pay.amount) AS total_payments
+FROM Payments pay
+JOIN Projects p ON pay.project_id = p.project_id
+GROUP BY p.project_name;
+
+-- Stored Procedure to Get Employee Financial Details
+DELIMITER //
+CREATE PROCEDURE GetEmployeeFinancials(IN empID INT)
+BEGIN
+    SELECT e.emp_name, e.designation, p.project_name, t.transaction_date, t.amount, t.transaction_type
+    FROM Employees e
+    JOIN Employee_Project ep ON e.emp_id = ep.emp_id
+    JOIN Projects p ON ep.project_id = p.project_id
+    JOIN Transactions t ON p.project_id = t.project_id
+    WHERE e.emp_id = empID;
+END //
+DELIMITER ;
+
+-- Run the stored procedure for Employee ID 1
+CALL GetEmployeeFinancials(1);
+This script can be used to manage financial projects, employee assignments, and transactions.
+I've provided a detailed SQL script for a financial project, including table creation, sample data, complex queries, and a stored procedure. 
